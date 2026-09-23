@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Odisea de las Escrituras: Dominio de las Escrituras del Seminario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            color-scheme: dark;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        html { scroll-padding-top: env(safe-area-inset-top, 0px); background: #020617; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.88);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .dice-container { perspective: 1000px; }
+
+        .dice {
+            width: 68px;
+            height: 68px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .dice-face {
+            position: absolute;
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(145deg, #ffffff, #e2e8f0);
+            border: 2px solid #cbd5e1;
+            border-radius: 16px;
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            padding: 8px;
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background-color: #0f172a;
+            border-radius: 50%;
+            justify-self: center;
+            align-self: center;
+            box-shadow: inset 0 2px 2px rgba(255,255,255,0.4);
+        }
+
+        .face-1 { transform: translateZ(34px); }
+        .face-2 { transform: rotateY(180deg) translateZ(34px); }
+        .face-3 { transform: rotateY(-90deg) translateZ(34px); }
+        .face-4 { transform: rotateY(90deg) translateZ(34px); }
+        .face-5 { transform: rotateX(90deg) translateZ(34px); }
+        .face-6 { transform: rotateX(-90deg) translateZ(34px); }
+
+        .board-canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9.8;
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%);
+            border-radius: 2rem;
+            border: 3px solid rgba(245, 158, 11, 0.35);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.85), 0 20px 40px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+
+        .path-node {
+            position: absolute;
+            width: 7.2%;
+            height: 11.2%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65), inset 0 3px 6px rgba(255,255,255,0.45);
+            transition: transform 0.25s ease, filter 0.25s ease;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .path-node:hover {
+            transform: translate(-50%, -50%) scale(1.18);
+            z-index: 30;
+            filter: brightness(1.25);
+        }
+
+        .token-pawn {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 25;
+            filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.8));
+            pointer-events: none;
+        }
+
+        .token-bounce { animation: pawnBounce 1.2s infinite alternate ease-in-out; }
+
+        @keyframes pawnBounce {
+            0% { transform: translate(-50%, -50%) translateY(0); }
+            100% { transform: translate(-50%, -50%) translateY(-5px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .token-bounce { animation: none; }
+            .dice { transition-duration: 0.01s; }
+        }
+
+        button:focus-visible, select:focus-visible, input:focus-visible {
+            outline: 2px solid #fbbf24;
+            outline-offset: 2px;
+        }
+
+        /* Colores por volumen de escritura */
+        .bg-pgp   { background: linear-gradient(135deg, #ec4899 0%, #9d174d 100%); }
+        .bg-at    { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); }
+        .bg-nt    { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+        .bg-lm    { background: linear-gradient(135deg, #10b981 0%, #065f46 100%); }
+        .bg-dyc   { background: linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%); }
+        .bg-start { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); }
+        .bg-finish { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    </style>
+</head>
+<body class="p-2 sm:p-4 lg:p-6 text-slate-100 flex flex-col min-h-screen justify-between">
+
+    <header class="glass-panel rounded-2xl p-4 sm:p-5 mb-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-indigo-500/30">
+        <div class="flex items-center gap-3 text-center md:text-left">
+            <div class="bg-gradient-to-tr from-amber-400 to-amber-600 p-3 rounded-2xl shadow-lg shadow-amber-500/20 text-slate-950 font-black text-2xl">
+                📖
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-amber-100 to-emerald-300">
+                    Odisea de las Escrituras
+                </h1>
+                <p class="text-xs sm:text-sm font-bold text-amber-300/90 tracking-wide">
+                    Dominio de las Escrituras del Seminario • Aventura en el tablero
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
+            <button type="button" onclick="toggleAudio()" id="audioBtn" class="glass-card hover:bg-slate-700/60 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2">
+                <span id="audioIcon">🔊</span> <span id="audioStatus">Sonido activado</span>
+            </button>
+            <button type="button" onclick="openCorrectionModal()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5">
+                <span>⚙️</span> Panel del maestro
+            </button>
+            <button type="button" onclick="openRestartModal()" class="bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1">
+                <span>🔄</span> Reiniciar juego
+            </button>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-grow">
+
+        <!-- Tablero -->
+        <section class="lg:col-span-8 flex flex-col gap-3">
+            <div class="glass-panel p-3 sm:p-4 rounded-3xl relative overflow-hidden flex-grow flex flex-col justify-center items-center">
+
+                <div class="board-canvas-container" id="boardCanvas">
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none" id="boardSvgPath" viewBox="0 0 1000 612" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.85"/>
+                                <stop offset="30%" stop-color="#3b82f6" stop-opacity="0.85"/>
+                                <stop offset="60%" stop-color="#10b981" stop-opacity="0.85"/>
+                                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.85"/>
+                            </linearGradient>
+                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="8" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                        </defs>
+                        <path id="svgCurvePath" d="" fill="none" stroke="url(#pathGradient)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+                        <path id="svgCurvePathDashed" d="" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 10" opacity="0.65"/>
+                    </svg>
+
+                    <div class="absolute text-[10px] sm:text-xs font-black tracking-wider text-amber-300/90 bg-slate-900/85 border border-amber-500/40 px-2.5 py-1 rounded-lg backdrop-blur-sm pointer-events-none shadow-md" style="left: 6%; top: 83%;">
+                        🏁 Salida
+                    </div>
+                    <div class="absolute text-[10px] sm:text-xs font-black tracking-wider text-cyan-300/90 bg-slate-900/85 border border-cyan-500/40 px-2.5 py-1 rounded-lg backdrop-blur-sm pointer-events-none shadow-md" style="left: 42%; top: 48%;">
+                        📜 Sendero de la Palabra
+                    </div>
+                    <div class="absolute text-[10px] sm:text-xs font-black text-amber-400 tracking-widest bg-amber-500/20 border border-amber-400 px-3 py-1.5 rounded-xl backdrop-blur-sm pointer-events-none shadow-lg" style="left: 2%; top: 19%;">
+                        🏛️ Meta: el Templo
+                    </div>
+
+                    <div id="nodesLayer" class="absolute inset-0"></div>
+                    <div id="pawnsLayer" class="absolute inset-0 pointer-events-none"></div>
+                </div>
+
+                <!-- Leyenda de volúmenes -->
+                <div class="w-full mt-2 glass-card p-2.5 rounded-2xl flex flex-wrap justify-center gap-2 sm:gap-4 text-[11px] font-bold">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-at shadow"></span> Antiguo Testamento (📜)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-nt shadow"></span> Nuevo Testamento (🐑)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-lm shadow"></span> Libro de Mormón (📖)</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-dyc shadow"></span> Doctrina y Convenios (✨)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Turno y posiciones -->
+        <aside class="lg:col-span-4 flex flex-col gap-4">
+            <div class="glass-panel p-5 rounded-3xl flex flex-col items-center justify-center text-center relative overflow-hidden">
+                <div class="text-xs font-bold text-slate-400 mb-1">Turno actual</div>
+                <div id="activePlayerBadge" class="text-xl font-black flex items-center gap-2 mb-3 px-4 py-1.5 rounded-full bg-slate-800/80 border border-slate-700">
+                    <span id="activePlayerIcon">🧭</span>
+                    <span id="activePlayerName">Jugador 1</span>
+                </div>
+
+                <div class="dice-container my-2 cursor-pointer" onclick="rollDice()">
+                    <div id="dice" class="dice">
+                        <div class="dice-face face-1"><div class="dot col-start-2 row-start-2"></div></div>
+                        <div class="dice-face face-2"><div class="dot col-start-1 row-start-1"></div><div class="dot col-start-3 row-start-3"></div></div>
+                        <div class="dice-face face-3"><div class="dot col-start-1 row-start-1"></div><div class="dot col-start-2 row-start-2"></div><div class="dot col-start-3 row-start-3"></div></div>
+                        <div class="dice-face face-4"><div class="dot col-start-1 row-start-1"></div><div class="dot col-start-3 row-start-1"></div><div class="dot col-start-1 row-start-3"></div><div class="dot col-start-3 row-start-3"></div></div>
+                        <div class="dice-face face-5"><div class="dot col-start-1 row-start-1"></div><div class="dot col-start-3 row-start-1"></div><div class="dot col-start-2 row-start-2"></div><div class="dot col-start-1 row-start-3"></div><div class="dot col-start-3 row-start-3"></div></div>
+                        <div class="dice-face face-6"><div class="dot col-start-1 row-start-1"></div><div class="dot col-start-3 row-start-1"></div><div class="dot col-start-1 row-start-2"></div><div class="dot col-start-3 row-start-2"></div><div class="dot col-start-1 row-start-3"></div><div class="dot col-start-3 row-start-3"></div></div>
+                    </div>
+                </div>
+
+                <button type="button" id="rollBtn" onclick="rollDice()" class="mt-3 w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-lg shadow-lg shadow-amber-500/25 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    🎲 Tirar el dado
+                </button>
+            </div>
+
+            <div class="glass-panel p-4 rounded-3xl flex flex-col gap-2.5">
+                <h3 class="text-sm font-bold text-slate-300 flex items-center justify-between">
+                    <span>Posiciones y puntos</span>
+                    <span id="playerCountLabel" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-amber-400 border border-slate-700">2 jugadores</span>
+                </h3>
+                <div id="playerList" class="flex flex-col gap-2"></div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-3xl flex-grow flex flex-col h-40">
+                <h4 class="text-xs font-bold text-slate-400 mb-1.5">Bitácora del viaje</h4>
+                <div id="gameLog" class="flex-grow overflow-y-auto text-xs space-y-1 pr-1 text-slate-300">
+                    <p class="text-slate-500 italic">¡Bienvenidos a la Odisea de las Escrituras! Tira el dado y recorre el sendero hasta el Templo.</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Configuración inicial -->
+    <div id="setupModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl max-w-lg w-full border border-indigo-500/30 shadow-2xl relative">
+            <h2 class="text-2xl font-black text-center text-amber-300 mb-1">Odisea de las Escrituras</h2>
+            <p class="text-xs text-center text-slate-400 mb-6">Elige cuántos jugadores son, sus nombres y su ícono</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-2">Modo de juego</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="setModoJuego('INDIVIDUAL')" id="juegoBtn-INDIVIDUAL" class="juegoBtn py-2 px-1 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold text-xs">🧍 Individual</button>
+                        <button type="button" onclick="setModoJuego('EQUIPOS')" id="juegoBtn-EQUIPOS" class="juegoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700">👥 Por equipos</button>
+                    </div>
+                </div>
+                <div>
+                    <label id="playerCountLabelText" class="block text-xs font-bold text-slate-300 mb-2">Número de jugadores (1 a 4)</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button type="button" onclick="setPlayerCount(1)" id="pBtn-1" class="pCountBtn py-2 rounded-xl border border-slate-700 bg-slate-800 font-bold hover:bg-slate-700">1</button>
+                        <button type="button" onclick="setPlayerCount(2)" id="pBtn-2" class="pCountBtn py-2 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold">2</button>
+                        <button type="button" onclick="setPlayerCount(3)" id="pBtn-3" class="pCountBtn py-2 rounded-xl border border-slate-700 bg-slate-800 font-bold hover:bg-slate-700">3</button>
+                        <button type="button" onclick="setPlayerCount(4)" id="pBtn-4" class="pCountBtn py-2 rounded-xl border border-slate-700 bg-slate-800 font-bold hover:bg-slate-700">4</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-2">Escrituras a repasar <span class="font-normal text-slate-400">(puedes elegir uno o varios libros)</span></label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="toggleVolumen('LM')" id="modoBtn-LM" class="modoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700">📖 Libro de Mormón<br><span id="modoCount-LM" class="text-[10px] font-semibold opacity-80"></span></button>
+                        <button type="button" onclick="toggleVolumen('AT')" id="modoBtn-AT" class="modoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700">📜 Antiguo Testamento<br><span id="modoCount-AT" class="text-[10px] font-semibold opacity-80"></span></button>
+                        <button type="button" onclick="toggleVolumen('NT')" id="modoBtn-NT" class="modoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700">🐑 Nuevo Testamento<br><span id="modoCount-NT" class="text-[10px] font-semibold opacity-80"></span></button>
+                        <button type="button" onclick="toggleVolumen('DYC')" id="modoBtn-DYC" class="modoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700">✨ Doctrina y Convenios<br><span id="modoCount-DYC" class="text-[10px] font-semibold opacity-80"></span></button>
+                        <button type="button" onclick="seleccionarTodas()" id="modoBtn-TODOS" class="modoBtn col-span-2 py-2 px-1 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold text-xs">📚 Todas<br><span id="modoCount-TODOS" class="text-[10px] font-semibold opacity-80"></span></button>
+                    </div>
+                </div>
+
+                <div id="playerConfigContainer" class="space-y-3 max-h-56 overflow-y-auto pr-1"></div>
+
+                <button type="button" onclick="startGameDirect()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-lg shadow-lg shadow-emerald-500/25 transition">
+                    🚀 Comenzar la odisea
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pregunta -->
+    <div id="questionModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl max-w-2xl w-full border border-indigo-500/40 shadow-2xl relative transform transition-all">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <span id="questionTopicBadge" class="px-3 py-1 rounded-full text-xs font-extrabold text-white shadow-sm">
+                    Volumen
+                </span>
+                <div class="text-xs font-bold text-slate-400">
+                    Resultado del dado: <span id="questionRollValue" class="text-amber-400 font-extrabold text-sm">3</span> casillas
+                </div>
+            </div>
+
+            <p id="questionKind" class="text-xs font-bold text-amber-300/90 mb-1"></p>
+            <h3 id="questionText" class="text-lg sm:text-xl font-bold text-slate-100 mb-6 leading-relaxed">
+                Cargando pregunta...
+            </h3>
+
+            <div id="optionsContainer" class="grid grid-cols-1 gap-3 mb-6"></div>
+
+            <div id="explanationBox" class="hidden p-4 rounded-2xl mb-5 text-xs sm:text-sm border leading-relaxed">
+                <p id="explanationTitle" class="font-extrabold text-sm mb-1"></p>
+                <p id="explanationBody" class="text-slate-200"></p>
+            </div>
+
+            <div class="flex justify-end gap-3 flex-wrap">
+                <button type="button" id="overrideCorrectBtn" onclick="refereeOverrideCurrent(true)" class="hidden text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-2 rounded-xl font-bold transition">
+                    ⚖️ Maestro: marcar como correcta
+                </button>
+                <button type="button" id="continueBtn" onclick="closeQuestionModalAndMove()" class="hidden px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold hover:from-amber-300 hover:to-amber-400 shadow-md transition">
+                    Continuar ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel del maestro -->
+    <div id="correctionModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 sm:p-8 rounded-3xl max-w-lg w-full border border-amber-500/30 shadow-2xl relative">
+            <h3 class="text-xl font-black text-amber-300 mb-1 flex items-center gap-2">
+                <span>⚙️</span> Panel del maestro
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Controles manuales de posición y puntos</p>
+
+            <div id="correctionPlayerList" class="space-y-4 max-h-72 overflow-y-auto pr-1"></div>
+
+            <div class="mt-6 flex justify-end">
+                <button type="button" onclick="closeCorrectionModal()" class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs transition">
+                    Cerrar panel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmar reinicio -->
+    <div id="restartModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-6 rounded-3xl max-w-sm w-full text-center border border-red-500/40 shadow-2xl relative">
+            <div class="text-4xl mb-3">🔄</div>
+            <h3 class="text-xl font-black text-red-300 mb-2">¿Reiniciar el juego?</h3>
+            <p class="text-xs text-slate-300 mb-6 leading-relaxed">
+                Todos los jugadores volverán a la salida y los puntos se pondrán en cero.
+            </p>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="closeRestartModal()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition">
+                    Cancelar
+                </button>
+                <button type="button" onclick="confirmRestartGame()" class="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-xs font-black text-white shadow-lg transition">
+                    Sí, reiniciar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ganador -->
+    <div id="winnerModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg hidden flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full text-center border border-amber-500/50 shadow-2xl relative">
+            <div class="text-6xl mb-4 animate-bounce">🏛️</div>
+            <h2 class="text-3xl font-black text-amber-300 mb-2">¡Llegaste al Templo!</h2>
+            <p id="winnerText" class="text-lg font-bold text-slate-100 mb-4">¡Jugador gana!</p>
+            <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+                ¡Felicidades! Recorriste el sendero de las escrituras de dominio y llegaste a la meta.
+            </p>
+            <button type="button" onclick="confirmRestartGame()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-lg shadow-lg shadow-amber-500/25 hover:from-amber-300 hover:to-amber-400 transition">
+                🎮 Jugar de nuevo
+            </button>
+        </div>
+    </div>
+
+    <footer class="mt-4 text-center text-xs text-slate-500 py-1">
+        <p>Juego de tablero para repasar Dominio de las Escrituras del Seminario</p>
+    </footer>
+
+    <script>
+        // ---------- Volúmenes de escritura ----------
+        const VOLUMENES = {
+            AT:  { nombre: 'Antiguo Testamento',   corto: 'A. Testamento', bgClass: 'bg-at', icon: '📜' },
+            NT:  { nombre: 'Nuevo Testamento',     corto: 'N. Testamento', bgClass: 'bg-nt', icon: '🐑' },
+            LM:  { nombre: 'Libro de Mormón',      corto: 'L. de Mormón', bgClass: 'bg-lm', icon: '📖' },
+            DYC: { nombre: 'Doctrina y Convenios', corto: 'D. y C.', bgClass: 'bg-dyc', icon: '✨' }
+        };
+        const ORDEN_VOLUMENES = ['AT', 'NT', 'LM', 'DYC'];
+
+        // ---------- Figuras (íconos acordes al tema de las escrituras) ----------
+        const FIGURINES = [
+            { id: 'liahona', name: 'La Liahona',       emoji: '🧭', color: '#f59e0b' },
+            { id: 'arbol',   name: 'Árbol de la Vida', emoji: '🌳', color: '#10b981' },
+            { id: 'espada',  name: 'Espada de Labán',  emoji: '🗡️', color: '#94a3b8' },
+            { id: 'llaves',  name: 'Llaves del Reino', emoji: '🗝️', color: '#eab308' },
+            { id: 'paloma',  name: 'Paloma del Espíritu', emoji: '🕊️', color: '#38bdf8' },
+            { id: 'escudo',  name: 'Escudo de la Fe',  emoji: '🛡️', color: '#8b5cf6' }
+        ];
+
+        // ---------- Las 96 escrituras de dominio (24 por libro): [referencia, frase clave] ----------
+        const ESCRITURAS_RAW = [
+            ['Moisés 1:39', 'Esta es mi obra y mi gloria: llevar a cabo la inmortalidad y la vida eterna del hombre'],
+            ['Moisés 7:18', 'Eran uno en corazón y voluntad'],
+            ['Abraham 2:9–11', 'La descendencia de Abraham llevará el sacerdocio a todas las naciones'],
+            ['Abraham 3:22–23', 'Fuimos organizados antes que existiera el mundo'],
+            ['Génesis 1:26–27', 'Dios creó al hombre a Su imagen'],
+            ['Génesis 2:24', 'El hombre se allegará a su mujer y serán una sola carne'],
+            ['Génesis 39:9', '¿Cómo haría yo este gran mal y pecaría contra Dios?'],
+            ['Éxodo 20:3–17', 'Los Diez Mandamientos'],
+            ['Josué 24:15', 'Escogeos hoy a quién sirváis'],
+            ['Salmos 24:3–4', 'El limpio de manos y puro de corazón'],
+            ['Proverbios 3:5–6', 'Confía en Jehová con todo tu corazón'],
+            ['Isaías 1:18', 'Aunque vuestros pecados sean como la grana'],
+            ['Isaías 5:20', 'Ay de los que a lo malo llaman bueno'],
+            ['Isaías 29:13–14', 'Una obra maravillosa y un prodigio'],
+            ['Isaías 53:3–5', 'Llevó nuestras enfermedades y sufrió nuestros dolores'],
+            ['Isaías 58:6–7', 'Las bendiciones del ayuno apropiado'],
+            ['Isaías 58:13–14', 'Llama al día de reposo delicia'],
+            ['Jeremías 1:4–5', 'Antes que te formase en el vientre te conocí'],
+            ['Ezequiel 3:16–17', 'El profeta es atalaya a la casa de Israel'],
+            ['Ezequiel 37:15–17', 'La Biblia y el Libro de Mormón serán uno'],
+            ['Daniel 2:44–45', 'Dios levantará un reino que no será destruido'],
+            ['Amós 3:7', 'El Señor revela sus secretos a los profetas'],
+            ['Malaquías 3:8–10', 'Las bendiciones de pagar el diezmo'],
+            ['Malaquías 4:5–6', 'Elías hará volver el corazón de los hijos'],
+            ['Mateo 5:14–16', 'Así alumbre vuestra luz'],
+            ['Mateo 11:28–30', 'Venid a mí todos los que estáis trabajados'],
+            ['Mateo 16:15–19', 'A ti te daré las llaves del reino'],
+            ['Mateo 22:36–39', 'Amarás al Señor y a tu prójimo'],
+            ['Lucas 2:10–12', 'Os ha nacido un Salvador'],
+            ['Lucas 22:19–20', 'Participad de la Santa Cena en memoria de mí'],
+            ['Lucas 24:36–39', 'Un espíritu no tiene carne ni huesos'],
+            ['Juan 3:5', 'Nacer de agua y del Espíritu'],
+            ['Juan 3:16', 'Porque de tal manera amó Dios al mundo'],
+            ['Juan 7:17', 'Conocerá si la doctrina es de Dios'],
+            ['Juan 17:3', 'Esta es la vida eterna'],
+            ['1 Corintios 6:19–20', 'Vuestro cuerpo es templo del Espíritu Santo'],
+            ['1 Corintios 11:11', 'Ni el varón sin la mujer ni la mujer sin el varón'],
+            ['1 Corintios 15:20–22', 'En Cristo todos serán vivificados'],
+            ['1 Corintios 15:40–42', 'Tres grados de gloria'],
+            ['Efesios 1:10', 'Reunir todas las cosas en Cristo'],
+            ['Efesios 2:19–20', 'Fundamento de apóstoles y profetas'],
+            ['2 Tesalonicenses 2:1–3', 'Vendrá la apostasía antes de la Segunda Venida'],
+            ['2 Timoteo 3:15–17', 'Las Escrituras hacen sabio para salvación'],
+            ['Hebreos 12:9', 'Padre de los espíritus'],
+            ['Santiago 1:5–6', 'Pídala a Dios'],
+            ['Santiago 2:17–18', 'La fe sin obras es muerta'],
+            ['1 Pedro 4:6', 'El Evangelio fue predicado a los muertos'],
+            ['Apocalipsis 20:12', 'Los muertos fueron juzgados según sus obras'],
+            ['1 Nefi 3:7', 'Iré y haré'],
+            ['2 Nefi 2:25', 'Existen los hombres para que tengan gozo'],
+            ['2 Nefi 2:27', 'Libres para escoger'],
+            ['2 Nefi 26:33', 'Todos son iguales ante Dios'],
+            ['2 Nefi 28:30', 'Línea por línea, precepto por precepto'],
+            ['2 Nefi 32:3', 'Deleitaos en las palabras de Cristo'],
+            ['2 Nefi 32:8–9', 'Debéis orar siempre'],
+            ['Mosíah 2:17', 'Al servir a otros servimos a Dios'],
+            ['Mosíah 2:41', 'Los que guardan los mandamientos son bendecidos'],
+            ['Mosíah 3:19', 'Despojaos del hombre natural'],
+            ['Mosíah 4:9', 'Creed en Dios'],
+            ['Mosíah 18:8–10', 'Bautismo como convenio'],
+            ['Alma 7:11–13', 'Sufrió dolores y aflicciones'],
+            ['Alma 34:9–10', 'Sacrificio infinito y eterno'],
+            ['Alma 39:9', 'No te dejes llevar por las concupiscencias'],
+            ['Alma 41:10', 'La maldad nunca fue felicidad'],
+            ['Helamán 5:12', 'Estableced vuestro fundamento sobre Cristo'],
+            ['3 Nefi 11:10–11', 'Me he sometido a la voluntad del Padre'],
+            ['3 Nefi 12:48', 'Sed perfectos'],
+            ['3 Nefi 27:20', 'Venid a mí y sed bautizados'],
+            ['Éter 12:6', 'Después de la prueba de vuestra fe'],
+            ['Éter 12:27', 'Haré fuertes las cosas débiles'],
+            ['Moroni 7:45–48', 'La caridad es el amor puro de Cristo'],
+            ['Moroni 10:4–5', 'El Espíritu Santo revela la verdad'],
+            ['José Smith—Historia 1:15–20', 'José Smith vio al Padre y al Hijo'],
+            ['D. y C. 1:30', 'La única iglesia verdadera y viviente'],
+            ['D. y C. 1:37–38', 'Sea por mi voz o por la voz de mis siervos'],
+            ['D. y C. 6:36', 'No dudéis; no temáis'],
+            ['D. y C. 8:2–3', 'Hablaré a tu mente y a tu corazón'],
+            ['D. y C. 13:1', 'Llaves del Sacerdocio Aarónico'],
+            ['D. y C. 18:10–11', 'El valor de las almas es grande'],
+            ['D. y C. 18:15–16', 'Cuán grande será vuestro gozo'],
+            ['D. y C. 19:16–19', 'He padecido estas cosas por todos'],
+            ['D. y C. 21:4–6', 'Recibid la palabra del profeta'],
+            ['D. y C. 29:10–11', 'Moraré con los hombres mil años'],
+            ['D. y C. 49:15–17', 'El matrimonio fue decretado por Dios'],
+            ['D. y C. 58:42–43', 'Quien se arrepiente es perdonado'],
+            ['D. y C. 64:9–11', 'Perdonad a todos los hombres'],
+            ['D. y C. 76:22–24', 'Por Jesucristo fueron creados los mundos'],
+            ['D. y C. 82:10', 'Estoy obligado cuando hacéis lo que os digo'],
+            ['D. y C. 84:20–22', 'El poder de la divinidad en las ordenanzas'],
+            ['D. y C. 88:118', 'Buscad conocimiento por estudio y fe'],
+            ['D. y C. 89:18–21', 'Bendiciones de la Palabra de Sabiduría'],
+            ['D. y C. 107:8', 'Poder y autoridad del Sacerdocio de Melquisedec'],
+            ['D. y C. 121:36, 41–42', 'Los derechos del sacerdocio'],
+            ['D. y C. 130:22–23', 'El Padre tiene un cuerpo de carne y huesos'],
+            ['D. y C. 131:1–4', 'El nuevo y sempiterno convenio del matrimonio'],
+            ['D. y C. 135:3', 'José Smith tradujo el Libro de Mormón']
+        ];
+
+        const PREFIJOS_VOLUMEN = {
+            AT:  ['Moisés', 'Abraham', 'Génesis', 'Éxodo', 'Josué', 'Salmos', 'Proverbios', 'Isaías', 'Jeremías', 'Ezequiel', 'Daniel', 'Amós', 'Malaquías'],
+            NT:  ['Mateo', 'Lucas', 'Juan', '1 Corintios', 'Efesios', '2 Tesalonicenses', '2 Timoteo', 'Hebreos', 'Santiago', '1 Pedro', 'Apocalipsis'],
+            LM:  ['1 Nefi', '2 Nefi', 'Mosíah', 'Alma', 'Helamán', '3 Nefi', 'Éter', 'Moroni'],
+            DYC: ['D. y C.', 'José Smith—Historia']
+        };
+
+        function volumenDe(ref) {
+            for (const vol of ORDEN_VOLUMENES) {
+                if (PREFIJOS_VOLUMEN[vol].some(p => ref.startsWith(p + ' '))) return vol;
+            }
+            return 'LM';
+        }
+
+        const ESCRITURAS = ESCRITURAS_RAW.map(([ref, frase]) => ({ ref, frase, vol: volumenDe(ref) }));
+
+        // ---------- Casillas del tablero (28 casillas en serpentina) ----------
+        const COORDS = [
+            [9,83],[22,83],[35,83],[48,83],[61,83],[74,83],[88,80],
+            [91,62],
+            [80,50],[66,50],[52,50],[38,50],[24,50],[10,46],
+            [8,29],
+            [20,20],[34,20],[48,20],[62,20],[75,20],[86,23],
+            [92,13],[78,8],[63,8],[48,8],[33,8],[20,8],[8,8]
+        ];
+
+        const BOARD_TILES = COORDS.map(([x, y], i) => {
+            if (i === 0) return { id: 0, x, y, type: 'start', label: 'SALIDA', bg: 'bg-start', icon: '🏁' };
+            if (i === COORDS.length - 1) return { id: i, x, y, type: 'finish', label: 'META: EL TEMPLO', bg: 'bg-finish', icon: '🏛️' };
+            const vol = ORDEN_VOLUMENES[(i - 1) % ORDEN_VOLUMENES.length];
+            const v = VOLUMENES[vol];
+            return { id: i, x, y, type: vol, label: v.corto, bg: v.bgClass, icon: v.icon };
+        });
+
+        // ---------- Estado del juego ----------
+        let players = [];
+        let numPlayers = 2;
+        let currentPlayerIndex = 0;
+        let isRolling = false;
+        let lastRollValue = 1;
+        let pendingQuestionData = null;
+        let seleccion = ORDEN_VOLUMENES.slice(); // volúmenes elegidos para repasar
+        const usadas = {};
+
+        // ---------- Modo individual / por equipos ----------
+        let modoJuego = 'INDIVIDUAL'; // 'INDIVIDUAL' | 'EQUIPOS'
+        const NOMBRES_EQUIPOS = [
+            'Pioneros', 'Lamanitas', 'Nefitas', 'Jareditas',
+            'Jóvenes guerreros', 'Israelitas', 'Discípulos de Cristo', 'Misioneros'
+        ];
+
+        function etiquetaParticipantes(n) {
+            return modoJuego === 'EQUIPOS' ? `${n} equipo${n > 1 ? 's' : ''}` : `${n} jugador${n > 1 ? 'es' : ''}`;
+        }
+
+        function setModoJuego(modo) {
+            modoJuego = modo;
+            document.querySelectorAll('.juegoBtn').forEach(btn => {
+                if (btn.id === `juegoBtn-${modo}`) {
+                    btn.className = 'juegoBtn py-2 px-1 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold text-xs shadow-md';
+                } else {
+                    btn.className = 'juegoBtn py-2 px-1 rounded-xl border border-slate-700 bg-slate-800 font-bold text-xs hover:bg-slate-700';
+                }
+            });
+            setPlayerCount(numPlayers);
+        } // escrituras ya usadas por volumen, para no repetir seguido
+
+        // ---------- Audio ----------
+        let audioEnabled = true;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (e) {}
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            document.getElementById('audioStatus').innerText = audioEnabled ? 'Sonido activado' : 'Sonido apagado';
+            document.getElementById('audioIcon').innerText = audioEnabled ? '🔊' : '🔇';
+        }
+
+        function playTone(freq, duration, type = 'sine') {
+            if (!audioEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function playRollSound() {
+            for (let i = 0; i < 5; i++) setTimeout(() => playTone(200 + Math.random() * 300, 0.08, 'square'), i * 80);
+        }
+        function playCorrectSound() {
+            playTone(523.25, 0.15);
+            setTimeout(() => playTone(659.25, 0.15), 120);
+            setTimeout(() => playTone(783.99, 0.3), 240);
+        }
+        function playWrongSound() {
+            playTone(280, 0.2, 'sawtooth');
+            setTimeout(() => playTone(190, 0.3, 'sawtooth'), 180);
+        }
+        function playMoveSound() { playTone(480, 0.08, 'sine'); }
+
+        // ---------- Inicio ----------
+        window.addEventListener('load', () => {
+            renderWindingBoard();
+            setPlayerCount(2);
+            ['LM', 'AT', 'NT', 'DYC'].forEach(v => {
+                document.getElementById(`modoCount-${v}`).innerText = `${ESCRITURAS.filter(e => e.vol === v).length} escrituras`;
+            });
+            document.getElementById('modoCount-TODOS').innerText = `${ESCRITURAS.length} escrituras`;
+        });
+
+        function esTodas() { return seleccion.length === ORDEN_VOLUMENES.length; }
+
+        function renderModoButtons() {
+            const base = 'modoBtn py-2 px-1 rounded-xl border font-bold text-xs ';
+            const on = 'border-amber-500/50 bg-amber-500/20 text-amber-300 shadow-md';
+            const off = 'border-slate-700 bg-slate-800 hover:bg-slate-700';
+            ['LM', 'AT', 'NT', 'DYC'].forEach(v => {
+                document.getElementById(`modoBtn-${v}`).className = base + (!esTodas() && seleccion.includes(v) ? on : off);
+            });
+            document.getElementById('modoBtn-TODOS').className = base + 'col-span-2 ' + (esTodas() ? on : off);
+        }
+
+        function toggleVolumen(v) {
+            if (esTodas()) {
+                seleccion = [v];
+            } else if (seleccion.includes(v)) {
+                seleccion = seleccion.filter(x => x !== v);
+                if (seleccion.length === 0) seleccion = ORDEN_VOLUMENES.slice();
+            } else {
+                seleccion.push(v);
+            }
+            renderModoButtons();
+        }
+
+        function seleccionarTodas() {
+            seleccion = ORDEN_VOLUMENES.slice();
+            renderModoButtons();
+        }
+
+        function renderWindingBoard() {
+            const nodesLayer = document.getElementById('nodesLayer');
+            nodesLayer.innerHTML = '';
+
+            let dStr = '';
+            BOARD_TILES.forEach((tile, index) => {
+                const xVal = (tile.x / 100) * 1000;
+                const yVal = (tile.y / 100) * 612;
+
+                dStr += index === 0 ? `M ${xVal} ${yVal}` : ` L ${xVal} ${yVal}`;
+
+                const node = document.createElement('div');
+                node.id = `node-${tile.id}`;
+                node.className = `path-node ${tile.bg}`;
+                node.style.left = `${tile.x}%`;
+                node.style.top = `${tile.y}%`;
+                node.title = `#${tile.id}: ${tile.label}`;
+                node.innerHTML = `
+                    <span class="text-[9px] font-black opacity-80 text-white -mb-1">${tile.id}</span>
+                    <span class="text-xs sm:text-base font-black text-white">${tile.icon}</span>
+                `;
+                nodesLayer.appendChild(node);
+            });
+
+            document.getElementById('svgCurvePath').setAttribute('d', dStr);
+            document.getElementById('svgCurvePathDashed').setAttribute('d', dStr);
+        }
+
+        function setPlayerCount(count) {
+            numPlayers = count;
+            const lblCount = document.getElementById('playerCountLabelText');
+            if (lblCount) lblCount.innerText = modoJuego === 'EQUIPOS' ? 'Número de equipos (1 a 4)' : 'Número de jugadores (1 a 4)';
+            document.querySelectorAll('.pCountBtn').forEach((btn, idx) => {
+                if (idx + 1 === count) {
+                    btn.className = 'pCountBtn py-2 rounded-xl border border-amber-500/50 bg-amber-500/20 text-amber-300 font-bold shadow-md';
+                } else {
+                    btn.className = 'pCountBtn py-2 rounded-xl border border-slate-700 bg-slate-800 font-bold hover:bg-slate-700';
+                }
+            });
+
+            const container = document.getElementById('playerConfigContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < numPlayers; i++) {
+                const defaultFigurine = FIGURINES[i % FIGURINES.length];
+                const div = document.createElement('div');
+                div.className = 'glass-card p-3 rounded-xl flex flex-wrap items-center gap-3';
+                const esEquipo = modoJuego === 'EQUIPOS';
+                const nombreDefecto = esEquipo ? NOMBRES_EQUIPOS[i % NOMBRES_EQUIPOS.length] : `Discípulo ${i + 1}`;
+                div.innerHTML = `
+                    <span class="font-bold text-xs text-amber-400">${esEquipo ? 'E' : 'J'}${i + 1}</span>
+                    <input type="text" id="pNameInput-${i}" value="${nombreDefecto}" class="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white flex-grow min-w-0 focus:outline-none focus:border-amber-400">
+                    <select id="pTokenSelect-${i}" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                        ${FIGURINES.map(f => `<option value="${f.id}" ${f.id === defaultFigurine.id ? 'selected' : ''}>${f.emoji} ${f.name}</option>`).join('')}
+                    </select>
+                    ${esEquipo ? `
+                    <select onchange="if (this.value) document.getElementById('pNameInput-${i}').value = this.value" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                        <option value="">Elegir otro equipo…</option>
+                        ${NOMBRES_EQUIPOS.map(n => `<option value="${n}">${n}</option>`).join('')}
+                    </select>` : ''}
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function startGameDirect() {
+            initAudio();
+
+            players = [];
+            for (let i = 0; i < numPlayers; i++) {
+                const nameInput = document.getElementById(`pNameInput-${i}`);
+                const tokenSelect = document.getElementById(`pTokenSelect-${i}`);
+                const name = escapeHtml((nameInput ? nameInput.value.trim() : '') || `${modoJuego === 'EQUIPOS' ? 'Equipo' : 'Jugador'} ${i + 1}`);
+                const tokenId = tokenSelect ? tokenSelect.value : FIGURINES[i].id;
+                const figurine = FIGURINES.find(f => f.id === tokenId) || FIGURINES[i];
+
+                players.push({
+                    id: i,
+                    name: name,
+                    figurine: figurine,
+                    position: 0,
+                    correctAnswers: 0,
+                    totalRolls: 0
+                });
+            }
+
+            currentPlayerIndex = 0;
+            isRolling = false;
+
+            document.getElementById('setupModal').classList.add('hidden');
+            document.getElementById('winnerModal').classList.add('hidden');
+            document.getElementById('questionModal').classList.add('hidden');
+            document.getElementById('correctionModal').classList.add('hidden');
+
+            document.getElementById('playerCountLabel').innerText = etiquetaParticipantes(numPlayers);
+
+            document.getElementById('gameLog').innerHTML = '';
+            Object.keys(usadas).forEach(k => delete usadas[k]);
+            const nombreModo = esTodas() ? 'todas las escrituras de dominio' : `solo ${seleccion.map(v => VOLUMENES[v].nombre).join(', ')}`;
+            logMessage(`¡Comenzó el juego con ${etiquetaParticipantes(numPlayers)}! Se repasan ${nombreModo}. Tira el dado para avanzar hacia el Templo.`);
+            updateUI();
+            updatePawnsOnBoard();
+        }
+
+        // ---------- Dado ----------
+        function rollDice() {
+            if (isRolling || players.length === 0) return;
+            initAudio();
+            isRolling = true;
+            document.getElementById('rollBtn').disabled = true;
+            document.getElementById('rollBtn').classList.add('opacity-50');
+
+            playRollSound();
+
+            const dice = document.getElementById('dice');
+            const rolls = Math.floor(Math.random() * 6) + 1;
+            lastRollValue = rolls;
+
+            const rotations = {
+                1: 'rotateX(0deg) rotateY(0deg)',
+                2: 'rotateY(-180deg)',
+                3: 'rotateY(90deg)',
+                4: 'rotateY(-90deg)',
+                5: 'rotateX(-90deg)',
+                6: 'rotateX(90deg)'
+            };
+
+            const extraX = (Math.floor(Math.random() * 3) + 2) * 360;
+            const extraY = (Math.floor(Math.random() * 3) + 2) * 360;
+
+            dice.style.transform = `rotateX(${extraX}deg) rotateY(${extraY}deg)`;
+
+            setTimeout(() => {
+                dice.style.transform = rotations[rolls];
+                setTimeout(() => {
+                    isRolling = false;
+                    document.getElementById('rollBtn').disabled = false;
+                    document.getElementById('rollBtn').classList.remove('opacity-50');
+
+                    const curPlayer = players[currentPlayerIndex];
+                    curPlayer.totalRolls++;
+
+                    logMessage(`${curPlayer.figurine.emoji} <strong>${curPlayer.name}</strong> sacó un <strong>${rolls}</strong>.`);
+                    triggerQuestionForRoll(rolls);
+                }, 400);
+            }, 800);
+        }
+
+        // ---------- Preguntas generadas desde las 100 escrituras ----------
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function drawScripture(vol) {
+            const pool = ESCRITURAS.filter(e => e.vol === vol);
+            if (!usadas[vol]) usadas[vol] = new Set();
+            let disponibles = pool.filter(e => !usadas[vol].has(e.ref));
+            if (disponibles.length === 0) {
+                usadas[vol].clear();
+                disponibles = pool;
+            }
+            const elegida = disponibles[Math.floor(Math.random() * disponibles.length)];
+            usadas[vol].add(elegida.ref);
+            return elegida;
+        }
+
+        function buildQuestion(vol) {
+            const correct = drawScripture(vol);
+            const mismoVolumen = shuffle(ESCRITURAS.filter(e => e.vol === vol && e.ref !== correct.ref));
+            const otros = shuffle(ESCRITURAS.filter(e => e.vol !== vol && seleccion.includes(e.vol)));
+            const distractores = mismoVolumen.concat(otros).slice(0, 3);
+
+            const tipo = Math.random() < 0.5 ? 'frase' : 'referencia';
+            let q, kind, options, answerText;
+
+            if (tipo === 'frase') {
+                kind = 'Encuentra la escritura';
+                q = `¿Qué escritura de dominio tiene esta frase clave?\n«${correct.frase}»`;
+                options = shuffle([correct].concat(distractores)).map(e => e.ref);
+                answerText = correct.ref;
+            } else {
+                kind = 'Recuerda la frase clave';
+                q = `¿Cuál es la frase clave de ${correct.ref}?`;
+                options = shuffle([correct].concat(distractores)).map(e => e.frase);
+                answerText = correct.frase;
+            }
+
+            return {
+                q,
+                kind,
+                options,
+                answer: options.indexOf(answerText),
+                explanation: `${correct.ref}: «${correct.frase}»`
+            };
+        }
+
+        function triggerQuestionForRoll(rollVal) {
+            const curPlayer = players[currentPlayerIndex];
+            const targetPos = Math.min(curPlayer.position + rollVal, BOARD_TILES.length - 1);
+            const targetTile = BOARD_TILES[targetPos];
+
+            let vol = targetTile.type;
+            if (!seleccion.includes(vol)) {
+                vol = seleccion[Math.floor(Math.random() * seleccion.length)];
+            }
+
+            const qData = buildQuestion(vol);
+
+            pendingQuestionData = {
+                question: qData,
+                rollValue: rollVal,
+                targetPosition: targetPos,
+                categoryKey: vol
+            };
+
+            const info = VOLUMENES[vol];
+            const badge = document.getElementById('questionTopicBadge');
+            badge.innerText = `${info.icon} ${info.nombre}`;
+            badge.className = `px-3 py-1 rounded-full text-xs font-extrabold text-white shadow-sm ${info.bgClass}`;
+
+            document.getElementById('questionRollValue').innerText = rollVal;
+            document.getElementById('questionKind').innerText = qData.kind;
+            const qEl = document.getElementById('questionText');
+            qEl.innerText = qData.q;
+            qEl.style.whiteSpace = 'pre-line';
+
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+
+            qData.options.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'opt-btn w-full text-left p-3.5 rounded-2xl glass-card hover:bg-slate-700/80 border border-slate-700/80 transition text-sm font-semibold flex items-center justify-between gap-3 group';
+                btn.onclick = () => handleAnswerSelect(index);
+
+                const span = document.createElement('span');
+                span.textContent = optText;
+                const letter = document.createElement('span');
+                letter.className = 'shrink-0 w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center text-xs text-slate-400 group-hover:border-amber-400 group-hover:text-amber-400';
+                letter.textContent = String.fromCharCode(65 + index);
+                btn.appendChild(span);
+                btn.appendChild(letter);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('explanationBox').className = 'hidden p-4 rounded-2xl mb-5 text-xs sm:text-sm border leading-relaxed';
+            document.getElementById('overrideCorrectBtn').classList.add('hidden');
+            document.getElementById('continueBtn').classList.add('hidden');
+
+            document.getElementById('questionModal').classList.remove('hidden');
+        }
+
+        function handleAnswerSelect(selectedIndex) {
+            const q = pendingQuestionData.question;
+            const isCorrect = (selectedIndex === q.answer);
+
+            const buttons = document.querySelectorAll('.opt-btn');
+            buttons.forEach((btn, idx) => {
+                btn.disabled = true;
+                if (idx === q.answer) {
+                    btn.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                } else if (idx === selectedIndex && !isCorrect) {
+                    btn.classList.add('bg-red-500/20', 'border-red-500', 'text-red-300');
+                }
+            });
+
+            const expBox = document.getElementById('explanationBox');
+            const expTitle = document.getElementById('explanationTitle');
+            const expBody = document.getElementById('explanationBody');
+
+            expBox.classList.remove('hidden');
+
+            if (isCorrect) {
+                playCorrectSound();
+                expBox.classList.add('bg-emerald-500/10', 'border-emerald-500/40', 'text-emerald-200');
+                expTitle.innerHTML = '✅ ¡Correcto! ¡Avanzas!';
+                pendingQuestionData.answeredCorrectly = true;
+            } else {
+                playWrongSound();
+                expBox.classList.add('bg-red-500/10', 'border-red-500/40', 'text-red-200');
+                expTitle.innerHTML = '❌ Incorrecto. Te quedas en tu casilla.';
+                pendingQuestionData.answeredCorrectly = false;
+                document.getElementById('overrideCorrectBtn').classList.remove('hidden');
+            }
+
+            expBody.innerText = q.explanation;
+            document.getElementById('continueBtn').classList.remove('hidden');
+        }
+
+        function refereeOverrideCurrent(forceCorrect) {
+            pendingQuestionData.answeredCorrectly = forceCorrect;
+            playCorrectSound();
+
+            const expBox = document.getElementById('explanationBox');
+            expBox.className = 'p-4 rounded-2xl mb-5 text-xs sm:text-sm border leading-relaxed bg-amber-500/10 border-amber-500/40 text-amber-200';
+            document.getElementById('explanationTitle').innerText = '⚖️ El maestro marcó la respuesta como correcta.';
+            document.getElementById('overrideCorrectBtn').classList.add('hidden');
+        }
+
+        function closeQuestionModalAndMove() {
+            document.getElementById('questionModal').classList.add('hidden');
+            const curPlayer = players[currentPlayerIndex];
+
+            if (pendingQuestionData.answeredCorrectly) {
+                curPlayer.correctAnswers++;
+                advancePlayerPosition(curPlayer, pendingQuestionData.rollValue);
+            } else {
+                logMessage(`❌ ${curPlayer.name} respondió mal y se queda en la casilla #${curPlayer.position}.`);
+                nextTurn();
+            }
+        }
+
+        function advancePlayerPosition(player, steps) {
+            let stepsRemaining = steps;
+
+            function stepAnimation() {
+                if (stepsRemaining > 0 && player.position < BOARD_TILES.length - 1) {
+                    player.position++;
+                    stepsRemaining--;
+                    playMoveSound();
+                    updatePawnsOnBoard();
+                    setTimeout(stepAnimation, 260);
+                } else {
+                    logMessage(`🎯 ${player.name} llegó a la casilla #${player.position} (${BOARD_TILES[player.position].label}).`);
+                    if (player.position >= BOARD_TILES.length - 1) {
+                        triggerVictory(player);
+                    } else {
+                        nextTurn();
+                    }
+                }
+            }
+            stepAnimation();
+        }
+
+        function nextTurn() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateUI();
+            updatePawnsOnBoard();
+        }
+
+        function triggerVictory(winner) {
+            logMessage(`🏛️ <strong>¡${winner.name} LLEGÓ AL TEMPLO!</strong>`);
+            document.getElementById('winnerText').innerText = `${winner.figurine.emoji} ¡${winner.name} gana la Odisea de las Escrituras!`;
+            document.getElementById('winnerModal').classList.remove('hidden');
+
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 160, spread: 90, origin: { y: 0.6 } });
+            }
+        }
+
+        // ---------- Panel del maestro ----------
+        function openCorrectionModal() {
+            const list = document.getElementById('correctionPlayerList');
+            list.innerHTML = '';
+
+            if (players.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-400">Aún no comienza la partida.</p>';
+            }
+
+            players.forEach((p, idx) => {
+                const item = document.createElement('div');
+                item.className = 'glass-card p-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">${p.figurine.emoji}</span>
+                        <div>
+                            <p class="font-bold text-xs text-white">${p.name}</p>
+                            <p class="text-[10px] text-slate-400">Casilla #${p.position} | Puntos: ${p.correctAnswers}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="manualAdjustPosition(${idx}, -1)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 border border-slate-700">-1 casilla</button>
+                        <button type="button" onclick="manualAdjustPosition(${idx}, 1)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-300 border border-slate-700">+1 casilla</button>
+                        <button type="button" onclick="manualAdjustScore(${idx}, 1)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-blue-300 border border-slate-700">+1 punto</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+
+            document.getElementById('correctionModal').classList.remove('hidden');
+        }
+
+        function closeCorrectionModal() {
+            document.getElementById('correctionModal').classList.add('hidden');
+        }
+
+        function manualAdjustPosition(pIndex, delta) {
+            const p = players[pIndex];
+            p.position = Math.max(0, Math.min(p.position + delta, BOARD_TILES.length - 1));
+            logMessage(`⚙️ Maestro: ${p.name} pasa a la casilla #${p.position}.`);
+            updatePawnsOnBoard();
+            updateUI();
+            openCorrectionModal();
+        }
+
+        function manualAdjustScore(pIndex, delta) {
+            const p = players[pIndex];
+            p.correctAnswers = Math.max(0, p.correctAnswers + delta);
+            logMessage(`⚙️ Maestro: los puntos de ${p.name} ahora son ${p.correctAnswers}.`);
+            updateUI();
+            openCorrectionModal();
+        }
+
+        // ---------- Dibujo de fichas e interfaz ----------
+        function updatePawnsOnBoard() {
+            const layer = document.getElementById('pawnsLayer');
+            layer.innerHTML = '';
+
+            players.forEach((p, idx) => {
+                const tile = BOARD_TILES[p.position];
+                const pawn = document.createElement('div');
+                pawn.className = `token-pawn ${idx === currentPlayerIndex ? 'token-bounce' : ''}`;
+
+                const offsetAngle = (idx / Math.max(1, players.length)) * Math.PI * 2;
+                const offsetX = Math.cos(offsetAngle) * 1.2;
+                const offsetY = Math.sin(offsetAngle) * 1.2;
+
+                pawn.style.left = `${tile.x + offsetX}%`;
+                pawn.style.top = `${tile.y + offsetY}%`;
+                pawn.innerHTML = `
+                    <div class="relative flex items-center justify-center">
+                        <span class="text-lg sm:text-2xl">${p.figurine.emoji}</span>
+                        <span class="absolute -bottom-1.5 bg-slate-900/90 text-white text-[8px] font-black px-1 rounded-full border border-amber-400">${modoJuego === 'EQUIPOS' ? 'E' : 'J'}${p.id + 1}</span>
+                    </div>
+                `;
+                layer.appendChild(pawn);
+            });
+        }
+
+        function updateUI() {
+            if (players.length === 0) return;
+
+            const activePlayer = players[currentPlayerIndex];
+            document.getElementById('activePlayerBadge').style.borderColor = activePlayer.figurine.color;
+            document.getElementById('activePlayerIcon').innerText = activePlayer.figurine.emoji;
+            document.getElementById('activePlayerName').innerHTML = activePlayer.name;
+
+            const pList = document.getElementById('playerList');
+            pList.innerHTML = '';
+
+            players.forEach((p, idx) => {
+                const isActive = (idx === currentPlayerIndex);
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl transition flex items-center justify-between border ${isActive ? 'glass-panel border-amber-400 shadow-md ring-1 ring-amber-400/50' : 'glass-card border-slate-700/60 opacity-80'}`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-2xl">${p.figurine.emoji}</span>
+                        <div>
+                            <p class="font-extrabold text-xs text-white flex items-center gap-1">
+                                ${p.name}
+                                ${isActive ? '<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>' : ''}
+                            </p>
+                            <p class="text-[10px] text-slate-400 font-medium">Casilla #${p.position}: ${BOARD_TILES[p.position].label}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-black text-amber-300">${p.correctAnswers} pts</p>
+                        <p class="text-[10px] text-slate-400">Puntos</p>
+                    </div>
+                `;
+                pList.appendChild(card);
+            });
+        }
+
+        function logMessage(msg) {
+            const log = document.getElementById('gameLog');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const p = document.createElement('p');
+            p.className = 'leading-relaxed border-b border-slate-800/60 pb-1';
+            p.innerHTML = `<span class="text-slate-500 font-mono text-[10px]">[${time}]</span> ${msg}`;
+            log.prepend(p);
+        }
+
+        // ---------- Reinicio ----------
+        function openRestartModal() { document.getElementById('restartModal').classList.remove('hidden'); }
+        function closeRestartModal() { document.getElementById('restartModal').classList.add('hidden'); }
+
+        function confirmRestartGame() {
+            isRolling = false;
+            currentPlayerIndex = 0;
+
+            document.getElementById('restartModal').classList.add('hidden');
+            document.getElementById('winnerModal').classList.add('hidden');
+            document.getElementById('questionModal').classList.add('hidden');
+            document.getElementById('correctionModal').classList.add('hidden');
+
+            players.forEach(p => {
+                p.position = 0;
+                p.correctAnswers = 0;
+                p.totalRolls = 0;
+            });
+
+            const dice = document.getElementById('dice');
+            if (dice) dice.style.transform = 'rotateX(0deg) rotateY(0deg)';
+
+            const rollBtn = document.getElementById('rollBtn');
+            if (rollBtn) {
+                rollBtn.disabled = false;
+                rollBtn.classList.remove('opacity-50');
+            }
+
+            updatePawnsOnBoard();
+            updateUI();
+            logMessage('🔄 <strong>¡Juego reiniciado!</strong> Todos los jugadores volvieron a la salida.');
+        }
+    </script>
+</body>
+</html>
