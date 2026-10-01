@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -1262,15 +1262,25 @@ function logMessage(msg) {
 const openRestartModal = () => $('restartModal').classList.remove('hidden');
 const closeRestartModal = () => $('restartModal').classList.add('hidden');
 function confirmRestartGame() {
-  if (!players.length) { closeRestartModal(); return; }
-  isRolling = false; currentPlayerIndex = 0;
+  /* Vuelve a la pantalla de configuración con todo en blanco */
+  isRolling = false; currentPlayerIndex = 0; pendingQuestionData = null;
+  players = [];
+  Object.keys(pawnEls).forEach(k => { pawnEls[k].remove(); delete pawnEls[k]; });
+  Object.keys(usadas).forEach(k => delete usadas[k]);
   ['restartModal', 'winnerModal', 'questionModal', 'correctionModal'].forEach(id => $(id).classList.add('hidden'));
-  players.forEach(p => { p.position = 0; p.correctAnswers = 0; p.totalRolls = 0; });
+  modoJuego = 'INDIVIDUAL'; numPlayers = 2; setupNames = [];
+  setupTokens = ['liahona', 'arbol', 'espada', 'llaves'];
+  seleccion = ORDEN_VOLUMENES.slice();
   $('dice').style.transform = DICE_ROT[1];
   $('rollBtn').disabled = false;
-  updatePawnsOnBoard(players[0]); updateUI();
+  $('playerList').innerHTML = '';
+  $('playerCountLabel').innerText = etiquetaParticipantes(numPlayers);
+  $('gameLog').innerHTML = '<p><em>Tira el dado y recorre el camino hasta el Templo.</em></p>';
+  $('activeRing').setAttribute('cx', -100); $('activeRing').setAttribute('cy', -100);
   $('boardScroll').scrollTo({ left: 0 });
-  logMessage('<strong>Juego reiniciado.</strong> Todos volvieron a la salida.');
+  renderSetup();
+  $('setupModal').classList.remove('hidden');
+  $('setupModal').scrollTop = 0;
 }
 
 document.addEventListener('keydown', e => {
