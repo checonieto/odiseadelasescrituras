@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -390,6 +390,8 @@ footer.foot{ text-align:center; color:var(--mist-dim); font-size:14px; font-styl
 <!-- Interfaz -->
 <symbol id="u-sound" viewBox="0 0 24 24"><path d="M3 9.500v5h4l5 4v-13l-5 4z" fill="currentColor"/><path d="M15.500 8.500a5 5 0 0 1 0 7M18 6a8.500 8.500 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
 <symbol id="u-mute" viewBox="0 0 24 24"><path d="M3 9.500v5h4l5 4v-13l-5 4z" fill="currentColor"/><path d="M16 9.500l5 5M21 9.500l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="u-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.500" cy="18" r="2.500" fill="currentColor"/><circle cx="16.500" cy="16" r="2.500" fill="currentColor"/></symbol>
+<symbol id="u-music-off" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/><circle cx="6.500" cy="18" r="2.500" fill="currentColor" opacity=".55"/><circle cx="16.500" cy="16" r="2.500" fill="currentColor" opacity=".55"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
 <symbol id="u-gear" viewBox="0 0 24 24"><path d="M12 8.600a3.400 3.400 0 1 0 0 6.800 3.400 3.400 0 0 0 0-6.800zm8.800 4.300v-1.800l-2.100-.7a7 7 0 0 0-.7-1.700l1-2-1.300-1.300-2 1a7 7 0 0 0-1.700-.7L13.300 3h-1.800l-.7 2.100a7 7 0 0 0-1.700.7l-2-1L5.800 6.100l1 2a7 7 0 0 0-.7 1.700l-2.100.7v1.800l2.100.7c.2.600.4 1.200.7 1.700l-1 2 1.300 1.300 2-1c.5.300 1.100.5 1.700.7l.7 2.100h1.800l.7-2.100c.6-.2 1.200-.4 1.700-.7l2 1 1.300-1.300-1-2c.3-.5.5-1.100.7-1.700z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
 <symbol id="u-restart" viewBox="0 0 24 24"><path d="M4.500 12a7.500 7.500 0 1 0 2.400-5.500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3.500 4v4.800H8.300" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="u-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 12.500l3.500 3.500L17 9" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -454,6 +456,9 @@ footer.foot{ text-align:center; color:var(--mist-dim); font-size:14px; font-styl
     <div class="toolbar">
       <button type="button" class="btn-ghost" id="audioBtn" onclick="toggleAudio()" aria-label="Activar o apagar el sonido">
         <svg class="ico" id="audioIcon"><use href="#u-sound"/></svg><span class="lbl" id="audioStatus">Sonido activado</span>
+      </button>
+      <button type="button" class="btn-ghost" id="musicBtn" onclick="toggleMusic()" aria-label="Activar o silenciar solo la música">
+        <svg class="ico" id="musicIcon"><use href="#u-music"/></svg><span class="lbl" id="musicStatus">Música activada</span>
       </button>
       <button type="button" class="btn-ghost" onclick="openCorrectionModal()">
         <svg class="ico"><use href="#u-gear"/></svg><span class="lbl">Panel del maestro</span>
@@ -903,6 +908,7 @@ function toggleAudio() {
   audioEnabled = !audioEnabled;
   $('audioStatus').innerText = audioEnabled ? 'Sonido activado' : 'Sonido apagado';
   $('audioIcon').innerHTML = `<use href="#${audioEnabled ? 'u-sound' : 'u-mute'}"/>`;
+  if (audioEnabled && players.length && $('winnerModal').classList.contains('hidden')) startMusic(); else stopMusic();
 }
 function playTone(freq, dur, type = 'sine', vol = 0.1) {
   if (!audioEnabled) return;
@@ -918,6 +924,105 @@ const playRollSound = () => { for (let i = 0; i < 6; i++) setTimeout(() => playT
 const playCorrectSound = () => { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => playTone(f, i === 3 ? 0.5 : 0.18, 'sine', 0.1), i * 110)); };
 const playWrongSound = () => { playTone(247, 0.25, 'triangle', 0.12); setTimeout(() => playTone(185, 0.4, 'triangle', 0.12), 200); };
 const playMoveSound = () => playTone(520, 0.08, 'sine', 0.08);
+
+/* ---------- Música de fondo: "La barra de hierro" (Himno 179) ---------- */
+/* Letra: Joseph L. Townsend · Música: William Clayson. Re mayor, 3/4 → 4/4, negra = 80–96 */
+const BPM = 88;
+const SECONDS_PER_BEAT = 60 / BPM;
+
+// [nota, duración en tiempos]  ('R' = silencio)
+const melody = [
+  // Estrofa, frase 1: "A Nefi, un profeta fiel del Libro de Mormón,"
+  ['D4', 1],
+  ['A4', 0.75], ['A4', 0.25], ['A4', 0.5], ['G4', 0.5], ['F#4', 0.5], ['G4', 0.5],
+  ['A4', 2], ['F#4', 1],
+  ['E4', 0.5], ['D4', 0.5], ['A4', 1], ['G4', 1],
+  ['F#4', 2],
+
+  // Frase 2: "Dios una barra le mostró en una gran visión."
+  ['A4', 1],
+  ['B4', 0.75], ['B4', 0.25], ['B4', 0.5], ['A4', 0.5], ['B4', 0.5], ['C#5', 0.5],
+  ['D5', 2], ['B4', 1],
+  ['A4', 0.5], ['B4', 0.5], ['F#4', 1], ['E4', 1],
+  ['D4', 2], ['R', 0.5], ['A4', 0.5],
+
+  // Coro, frase 1: "La barra de hierro firme es. Asidla sin cesar."
+  ['A4', 1], ['F#4', 0.75], ['G4', 0.25], ['A4', 1.5], ['B4', 0.5],
+  ['A4', 0.5], ['G4', 0.5], ['F#4', 0.5], ['E4', 0.5], ['D4', 1.5], ['A4', 0.5],
+  ['F#4', 1], ['A4', 1], ['D5', 1], ['B4', 1],
+  ['A4', 3],
+
+  // Coro, frase 2: "La barra es la palabra de Dios; a salvo nos puede guiar."
+  ['A4', 1],
+  ['A4', 1], ['A4', 1], ['A4', 1], ['G4', 0.5], ['F#4', 0.5],
+  ['G4', 0.5], ['A4', 0.5], ['B4', 0.5], ['C#5', 0.5], ['D5', 1.5], ['B4', 0.5],
+  ['A4', 1], ['G4', 0.5], ['F#4', 0.5], ['E4', 1], ['A4', 1],
+  ['D4', 3],
+
+  // Pausa antes de repetir
+  ['R', 2]
+];
+
+const SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+function noteFreq(name) {
+  const m = name.match(/^([A-G])(#|b)?(\d)$/);
+  const semi = SEMITONES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  const midi = 12 * (parseInt(m[3], 10) + 1) + semi;
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+let musicEnabled = true;          // el botón "Música" silencia solo la canción
+let musicGain = null, musicOscs = [], musicTimer = null;
+
+function scheduleMelody() {
+  if (!audioCtx || !musicGain) return;
+  const t0 = audioCtx.currentTime + 0.1;
+  let t = t0;
+  musicOscs = [];
+  melody.forEach(([note, beats]) => {
+    const dur = beats * SECONDS_PER_BEAT;
+    if (note !== 'R') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = noteFreq(note);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(1, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+      osc.connect(g); g.connect(musicGain);
+      osc.start(t); osc.stop(t + dur);
+      musicOscs.push(osc);
+    }
+    t += dur;
+  });
+  musicTimer = setTimeout(scheduleMelody, (t - t0) * 1000); // repetir en bucle
+}
+
+function startMusic() {
+  if (!audioEnabled || !musicEnabled) return;
+  stopMusic();
+  try {
+    initAudio();
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.05;            // volumen bajo para no tapar los efectos
+    musicGain.connect(audioCtx.destination);
+    scheduleMelody();
+  } catch (e) {}
+}
+
+function stopMusic() {
+  clearTimeout(musicTimer); musicTimer = null;
+  musicOscs.forEach(o => { try { o.stop(); } catch (e) {} });
+  musicOscs = [];
+  if (musicGain) { try { musicGain.disconnect(); } catch (e) {} musicGain = null; }
+}
+
+function toggleMusic() {
+  musicEnabled = !musicEnabled;
+  $('musicStatus').innerText = musicEnabled ? 'Música activada' : 'Música apagada';
+  $('musicIcon').innerHTML = `<use href="#${musicEnabled ? 'u-music' : 'u-music-off'}"/>`;
+  if (musicEnabled && players.length && $('winnerModal').classList.contains('hidden')) startMusic(); else stopMusic();
+}
 
 /* ---------- Dado 3D (caras opuestas suman 7) ---------- */
 const PIPS = { 1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
@@ -993,6 +1098,7 @@ function renderSetup() {
 
 function startGameDirect() {
   initAudio();
+  startMusic();
   syncSetupNames();
   players = [];
   for (let i = 0; i < numPlayers; i++) {
@@ -1153,6 +1259,7 @@ function nextTurn() {
 }
 
 function triggerVictory(winner) {
+  stopMusic();
   logMessage(`<strong>¡${winner.name} llegó al Templo!</strong>`);
   $('winnerCoin').outerHTML = coinHTML(winner.figurine, 'sm').replace('class="coin sm"', 'id="winnerCoin" class="coin sm"');
   $('winnerText').innerHTML = `¡${winner.name} gana la Odisea!`;
@@ -1262,6 +1369,7 @@ function logMessage(msg) {
 const openRestartModal = () => $('restartModal').classList.remove('hidden');
 const closeRestartModal = () => $('restartModal').classList.add('hidden');
 function confirmRestartGame() {
+  stopMusic();
   /* Vuelve a la pantalla de configuración con todo en blanco */
   isRolling = false; currentPlayerIndex = 0; pendingQuestionData = null;
   players = [];
